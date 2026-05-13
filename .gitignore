@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+.lark_tmp.json
+.env
+*.egg-info/
+.claude/
+charts/
