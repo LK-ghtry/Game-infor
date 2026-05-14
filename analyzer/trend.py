@@ -39,7 +39,7 @@ def analyze_listing(chart_key, current_games):
         # 评论增长
         old_reviews = prev["review_total"] or 0
         new_reviews = game.get("review_total", 0)
-        if old_reviews > 100 and new_reviews > 0:
+        if old_reviews > 50 and new_reviews > 0:
             growth = (new_reviews - old_reviews) / old_reviews
             if growth >= REVIEW_GROWTH_THRESHOLD:
                 alerts.append({
@@ -53,7 +53,7 @@ def analyze_listing(chart_key, current_games):
         # 评分暴跌
         old_score = prev["review_score"] or 0
         new_score = game.get("review_score", 0)
-        if old_score > 50 and new_score > 0:
+        if old_score > 30 and new_score > 0:
             drop = old_score - new_score
             if drop >= SCORE_DROP_THRESHOLD:
                 alerts.append({

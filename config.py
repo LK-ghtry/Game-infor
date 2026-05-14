@@ -31,9 +31,9 @@ USER_AGENTS = [
 ]
 
 # --- 预警阈值 ---
-RANK_SPIKE_THRESHOLD = 20        # 排名上升超过 20 位视为飙升
-REVIEW_GROWTH_THRESHOLD = 0.5    # 评论数增长率超过 50% 视为爆炸
-SCORE_DROP_THRESHOLD = 10         # 好评率下降超过 10 个百分点视为暴跌
+RANK_SPIKE_THRESHOLD = 10        # 排名上升超过 10 位视为飙升
+REVIEW_GROWTH_THRESHOLD = 0.25   # 评论数增长率超过 25% 视为爆炸
+SCORE_DROP_THRESHOLD = 5          # 好评率下降超过 5 个百分点视为暴跌
 
 # --- 数据库 ---
 DB_PATH = "E:/CC/game agent/data/steam_monitor.db"
