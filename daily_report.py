@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from config import STEAM_LISTINGS, LARK_CHAT_ID
 from storage.db import get_conn, get_today_game_ids
-from analyzer.llm import analyze_game
+from analyzer.llm import analyze_game, analyze_daily_summary
 from notifier.lark import send_daily_report
 from visualizer import generate_comparison_chart, send_chart_to_lark
 
@@ -25,8 +25,9 @@ def generate_report():
         ORDER BY severity DESC, created_at DESC
     """).fetchall()
 
-    # 各榜单 Top 5
+    # 各榜单 Top 5 + 汇总数据（供 LLM 分析用）
     chart_summaries = []
+    chart_data = {}
     for chart_type in STEAM_LISTINGS:
         label = STEAM_LISTINGS[chart_type]["label"]
         rows = conn.execute("""
@@ -43,29 +44,39 @@ def generate_report():
             ORDER BY s.chart_rank ASC
             LIMIT 5
         """, (chart_type,)).fetchall()
-        if rows:
+        chart_rows = [dict(r) for r in rows]
+        chart_data[label] = [{"name": r["name"], "rank": r["chart_rank"]} for r in chart_rows]
+        if chart_rows:
             lines = [f"【{label} Top 5】"]
-            for r in rows:
+            for r in chart_rows:
                 lines.append(f"  #{r['chart_rank']} {r['name']} | 评论{r['review_total']} | 好评率{r['review_score']}%")
             chart_summaries.append("\n".join(lines))
+
+    # LLM 整体分析
+    alerts_list = [dict(a) for a in today_alerts]
+    insight = analyze_daily_summary(total_snapshots, alerts_list, chart_data)
 
     # 组装报告
     lines = [
         f"## Steam 游戏情报日报",
         f"日期: {datetime.now().strftime('%Y-%m-%d')}",
-        f"今日追踪游戏: {total_snapshots} 款",
-        f"今日预警: {len(today_alerts)} 条",
+        f"今日追踪游戏: {total_snapshots} 款 | 预警: {len(today_alerts)} 条",
         "",
     ]
 
+    if insight:
+        lines.append("### 今日分析洞察")
+        lines.append(insight)
+        lines.append("")
+
+    lines.extend(chart_summaries)
+
     if today_alerts:
+        lines.append("")
         lines.append("### 今日预警")
         for a in today_alerts:
             sev = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨"}.get(a["severity"], "")
             lines.append(f"- {sev} {a['message']}")
-
-    lines.append("")
-    lines.extend(chart_summaries)
 
     report = "\n".join(lines)
     gids = get_today_game_ids()

@@ -42,7 +42,7 @@ def analyze_game(game_info, reviews_summary):
 
     body = {
         "model": cfg["model"],
-        "max_tokens": 256,
+        "max_tokens": 1024,
         "temperature": 0.7,
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -52,16 +52,81 @@ def analyze_game(game_info, reviews_summary):
             f"{cfg['base_url']}/messages",
             headers=headers,
             json=body,
-            timeout=30,
+            timeout=60,
         )
         resp.raise_for_status()
         data = resp.json()
         content = data.get("content", [])
-        if content and len(content) > 0:
-            return content[0].get("text", "")
+        # 提取所有 text 类型的 block（跳过 thinking 类型）
+        texts = [b.get("text", "") for b in content if b.get("type") == "text"]
+        if texts:
+            return "".join(texts)
         return "[LLM 返回为空]"
     except Exception as e:
         return f"[LLM 分析失败: {e}]"
+
+
+def analyze_daily_summary(snapshot_count, alerts, chart_data):
+    """对当日 Steam 市场数据进行整体分析，返回 150 字以内的中文洞察"""
+    cfg = _get_api_config()
+    if not cfg["api_key"]:
+        return ""
+
+    alert_lines = "\n".join([f"- [{a['severity']}] {a['message']}" for a in alerts[:10]]) or "无预警"
+
+    charts_text = ""
+    for label, games in chart_data.items():
+        top = ", ".join([f"#{g['rank']} {g['name']}" for g in games[:5]])
+        charts_text += f"\n{label}: {top}"
+
+    prompt = f"""你是 Steam 游戏市场分析师。根据以下当日数据，用中文写一段 150 字以内的市场洞察。
+
+今日追踪游戏: {snapshot_count} 款
+今日预警: {len(alerts)} 条
+
+预警列表:
+{alert_lines}
+
+各榜单 Top 5:
+{charts_text}
+
+请分析：
+1. 今日 Steam 市场的整体动向和值得关注的趋势
+2. 哪些游戏/品类表现突出或异常
+3. 对开发者和发行商有何启示
+
+要求：简洁精炼，有洞察而非罗列，150 字以内。"""
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": cfg["api_key"],
+        "anthropic-version": "2023-06-01",
+    }
+
+    body = {
+        "model": cfg["model"],
+        "max_tokens": 2048,
+        "temperature": 0.7,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    try:
+        resp = requests.post(
+            f"{cfg['base_url']}/messages",
+            headers=headers,
+            json=body,
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = data.get("content", [])
+        texts = [b.get("text", "") for b in content if b.get("type") == "text"]
+        if texts:
+            return "".join(texts)
+        return ""
+    except Exception as e:
+        print(f"[LLM 日报分析失败: {e}]")
+        return ""
 
 
 def analyze_trending_list(games_with_details):

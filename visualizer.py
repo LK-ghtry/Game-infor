@@ -56,24 +56,42 @@ def generate_comparison_chart(chart_key, prev_snapshots, curr_snapshots):
     if not top_changes:
         return None
 
-    names = [c[0][:20] for c in top_changes]
-    deltas = [c[1] for c in top_changes]
+    # 取游戏名+排名，按 delta 绝对值排序（最上面是变化最大的）
+    items = [(c[0][:20], c[1], c[2]) for c in top_changes]  # (name, delta, rank)
+    items.sort(key=lambda x: abs(x[1]), reverse=True)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    names = [it[0] for it in items]
+    deltas = [it[1] for it in items]
+    curr_ranks = [it[2] for it in items]
+
+    fig, ax = plt.subplots(figsize=(12, 7))
     colors = ["#27ae60" if d > 0 else "#e74c3c" for d in deltas]
-    ax.barh(names[::-1], deltas[::-1], color=colors[::-1], edgecolor="white")
-    ax.set_xlabel("Rank Change", fontsize=12)
-    ax.set_title(f"Steam [{label}] 24h Ranking Changes — {datetime.now().strftime('%Y-%m-%d')}", fontsize=13)
+    bars = ax.barh(names, deltas, color=colors, edgecolor="white", height=0.6)
+
+    ax.set_xlabel("Rank Change (positive = 上升)", fontsize=10)
+    ax.set_title(f"Steam [{label}] 24h Ranking Changes — {datetime.now().strftime('%Y-%m-%d')}", fontsize=12)
     ax.axvline(x=0, color="gray", linewidth=0.8)
 
-    for i, (d, rank) in enumerate(zip(deltas, top_changes)):
+    # 用 bar_label 在条形末端标注变化量
+    for bar, d, rank in zip(bars, deltas, curr_ranks):
         direction = "↑" if d > 0 else "↓"
-        ax.text(d + (0.5 if d >= 0 else -0.5), len(top_changes) - 1 - i,
-                f"{direction}{abs(d)}  (#{rank})",
-                va="center", ha="left" if d >= 0 else "right",
-                fontsize=9, color="#333")
+        w = bar.get_width()
+        offset = 0.3 if w >= 0 else -0.3
+        ha = "left" if w >= 0 else "right"
+        ax.text(w + offset, bar.get_y() + bar.get_height() / 2,
+                f"{direction}{abs(d)}",
+                va="center", ha=ha, fontsize=8, color="#333", fontweight="bold")
 
-    plt.tight_layout()
+    # 在最右侧统一标注排名，用细线连接避免重叠
+    right_edge = max(deltas) + max(abs(min(deltas)), max(deltas)) * 0.35 + 1
+    for bar, d, rank in zip(bars, deltas, curr_ranks):
+        y = bar.get_y() + bar.get_height() / 2
+        ax.plot([bar.get_width(), right_edge], [y, y],
+                color="#ccc", linewidth=0.4, linestyle="--")
+        ax.text(right_edge + 0.2, y, f"#{rank}",
+                va="center", ha="left", fontsize=7, color="#888")
+
+    plt.tight_layout(pad=1.5)
     fname = f"{chart_key}_{datetime.now().strftime('%Y%m%d_%H%M')}.png"
     fpath = os.path.join(CHART_DIR, fname)
     plt.savefig(fpath, dpi=120, bbox_inches="tight")
