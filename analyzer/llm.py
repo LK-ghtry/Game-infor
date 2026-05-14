@@ -42,7 +42,7 @@ def analyze_game(game_info, reviews_summary):
 
     body = {
         "model": cfg["model"],
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "temperature": 0.7,
         "messages": [{"role": "user", "content": prompt}],
     }
@@ -105,7 +105,7 @@ def analyze_daily_summary(snapshot_count, alerts, chart_data):
 
     body = {
         "model": cfg["model"],
-        "max_tokens": 2048,
+        "max_tokens": 4096,
         "temperature": 0.7,
         "messages": [{"role": "user", "content": prompt}],
     }
