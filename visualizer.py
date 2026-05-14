@@ -83,16 +83,19 @@ def generate_comparison_chart(chart_key, prev_snapshots, curr_snapshots):
 
 def send_chart_to_lark(image_path, chat_id, title):
     """发送图表图片到飞书群"""
+    chart_dir = os.path.dirname(image_path)
+    fname = os.path.basename(image_path)
     try:
         result = subprocess.run(
             [LARK_CLI, "im", "+messages-send",
              "--chat-id", chat_id,
-             "--image", image_path,
+             "--image", f"./{fname}",
              "--as", "bot"],
             capture_output=True,
             text=True,
             timeout=30,
             encoding="utf-8",
+            cwd=chart_dir,
         )
         if result.returncode == 0:
             print(f"[LARK OK] chart sent: {title}")

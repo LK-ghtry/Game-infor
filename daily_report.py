@@ -82,7 +82,10 @@ def generate_report():
 
     # 推送到飞书（文字报告）
     send_daily_report(report, len(today_alerts), len(gids) if gids else total_snapshots)
-    print(report)
+    try:
+        print(report)
+    except UnicodeEncodeError:
+        print(report.encode("ascii", errors="replace").decode("ascii"))
 
     # 生成并发送排名变化对比图表
     print(f"[{datetime.now()}] 生成排名变化图表...")
